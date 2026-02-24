@@ -217,6 +217,8 @@ export default function App() {
       <div ref={titleBarRef} className="titlebar" data-tauri-drag-region>
         <span className="title">JSON Editor</span>
         <div className="titlebar-actions">
+          <button className="theme-toggle" onClick={loadSample} title="加载示例">✦</button>
+          <button className="theme-toggle" onClick={() => editorRef.current?.setValue("")} title="清空">✕</button>
           <button className="theme-toggle" onClick={() => setTheme(t => {
               const next = t === "dark" ? "light" : "dark";
               localStorage.setItem("theme", next);
@@ -230,11 +232,6 @@ export default function App() {
 
       {/* Toolbar */}
       <div className="toolbar">
-        <button className="btn primary" onClick={format}>⌘ 格式化</button>
-        <button className="btn" onClick={minify}>⇲ 压缩</button>
-<button className="btn" onClick={loadSample}>✦ 示例</button>
-        <button className="btn danger" onClick={() => editorRef.current?.setValue("")}>✕ 清空</button>
-        <div className="spacer" />
         <div className={`status-pill ${status}`}>
           <span className="dot" />
           {status === "idle" ? "等待输入" : status === "ok" ? "✓ 有效 JSON" : "✗ 语法错误"}
@@ -246,7 +243,14 @@ export default function App() {
         {/* Left: Monaco Editor */}
         <div className="pane left-pane">
           <div className="pane-header">
-            <span>输入</span>
+            <div className="pane-header-left">
+              <span>输入</span>
+            </div>
+            <div className="pane-header-right">
+              {parsed !== null && (
+                <button className="pane-copy-btn" onClick={minify}>⇲ 压缩</button>
+              )}
+            </div>
           </div>
           <div className="editor-wrap">
             {input && (
