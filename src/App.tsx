@@ -7,6 +7,7 @@ import "./App.css";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type Status = "idle" | "ok" | "error";
+type AiStatus = "idle" | "loading" | "success" | "fail" | "error";
 type TabId = "tree" | "text";
 
 // ── Tree helpers ───────────────────────────────────────────────────────────
@@ -70,6 +71,28 @@ function TreeNodeRow({
   );
 }
 
+// ── AI helpers ─────────────────────────────────────────────────────────────
+const SYSTEM_PROMPT = `You are a JSON repair assistant. Given broken JSON, respond ONLY with a JSON object (no markdown):
+{"success": true, "result": "...repaired json as escaped string..."}
+OR
+{"success": false, "reason": "...中文失败原因，最多80字..."}
+Common fixable: trailing commas, single quotes, unquoted keys, missing commas, JS comments.
+Return success=false only when structure is ambiguous or semantically broken.`;
+
+function parseAiResponse(raw: string): { success: boolean; result?: string; reason?: string } {
+  let text = raw.trim();
+  text = text.replace(/^```(?:json)?\n?/i, "").replace(/\n?```$/i, "").trim();
+  try {
+    return JSON.parse(text);
+  } catch {
+    const match = text.match(/\{[\s\S]*\}/);
+    if (match) {
+      try { return JSON.parse(match[0]); } catch { /* fall through */ }
+    }
+  }
+  return { success: false, reason: "AI 返回格式异常，无法解析" };
+}
+
 // ── Main App ───────────────────────────────────────────────────────────────
 export default function App() {
   const [input, setInput] = useState("");
@@ -84,6 +107,11 @@ export default function App() {
   const [theme, setTheme] = useState<"dark" | "light">(
     () => (localStorage.getItem("theme") as "dark" | "light") ?? "dark"
   );
+  const [aiStatus, setAiStatus] = useState<AiStatus>("idle");
+  const [aiMessage, setAiMessage] = useState("");
+  const [showSettings, setShowSettings] = useState(false);
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem("ai_api_key") ?? "");
+  const [apiKeyDraft, setApiKeyDraft] = useState("");
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const titleBarRef = useRef<HTMLDivElement>(null);
 
@@ -106,6 +134,7 @@ export default function App() {
   const handleChange = useCallback((val: string | undefined) => {
     const v = val ?? "";
     setInput(v);
+    setAiStatus("idle");
     if (!v.trim()) { setStatus("idle"); setError(""); setParsed(null); return; }
     try {
       const data = JSON.parse(v);
@@ -207,6 +236,53 @@ export default function App() {
     editorRef.current?.setValue(JSON.stringify(sample, null, 2));
   }
 
+  async function repairWithAI() {
+    if (!apiKey) {
+      setApiKeyDraft("");
+      setShowSettings(true);
+      return;
+    }
+    setAiStatus("loading");
+    const inputText = input.length > 8000 ? input.slice(0, 8000) : input;
+    try {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: "claude-3-5-haiku-20241022",
+          max_tokens: 4096,
+          system: SYSTEM_PROMPT,
+          messages: [{ role: "user", content: inputText }],
+        }),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      const rawText = data.content?.[0]?.text ?? "";
+      const aiResult = parseAiResponse(rawText);
+      if (aiResult.success && aiResult.result) {
+        try {
+          JSON.parse(aiResult.result);
+          editorRef.current?.setValue(aiResult.result);
+          setAiStatus("success");
+          setTimeout(() => setAiStatus("idle"), 2500);
+        } catch {
+          setAiStatus("fail");
+          setAiMessage("AI 修复结果不是有效 JSON，请手动检查");
+        }
+      } else {
+        setAiStatus("fail");
+        setAiMessage(aiResult.reason ?? "AI 无法修复此 JSON");
+      }
+    } catch (e: unknown) {
+      setAiStatus("error");
+      setAiMessage((e as Error).message ?? "网络请求失败");
+    }
+  }
+
   const bytes = new Blob([input]).size;
   const sizeLabel = bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`;
   const lineCount = input ? input.split("\n").length : 0;
@@ -217,6 +293,7 @@ export default function App() {
       <div ref={titleBarRef} className="titlebar" data-tauri-drag-region>
         <span className="title">JSON Editor</span>
         <div className="titlebar-actions">
+          <button className="theme-toggle" onClick={() => { setApiKeyDraft(apiKey); setShowSettings(true); }} title="AI 设置">⚙</button>
           <button className="theme-toggle" onClick={loadSample} title="加载示例">✦</button>
           <button className="theme-toggle" onClick={() => editorRef.current?.setValue("")} title="清空">✕</button>
           <button className="theme-toggle" onClick={() => setTheme(t => {
@@ -281,7 +358,26 @@ export default function App() {
               onMount={handleEditorMount}
             />
           </div>
-          {error && <div className="error-bar">⚠ {error}</div>}
+          {(status === "error" || aiStatus === "fail" || aiStatus === "error") && (
+            <div className={`error-bar${aiStatus === "fail" || aiStatus === "error" ? " warn" : ""}`}>
+              <span className="error-bar-text">
+                {aiStatus === "fail" || aiStatus === "error" ? `⚠ ${aiMessage}` : `⚠ ${error}`}
+              </span>
+              {status === "error" && aiStatus === "idle" && (
+                <button className="ai-fix-btn" onClick={repairWithAI}>✦ AI 修复</button>
+              )}
+              {aiStatus === "loading" && (
+                <button className="ai-fix-btn loading" disabled>⟳ 修复中...</button>
+              )}
+              {(aiStatus === "fail" || aiStatus === "error") && (
+                <>
+                  <button className="ai-fix-btn" onClick={repairWithAI}>↺ 重试</button>
+                  <button className="ai-close-btn" onClick={() => setAiStatus("idle")}>✕</button>
+                </>
+              )}
+            </div>
+          )}
+          {aiStatus === "success" && <div className="ai-success-bar">✓ AI 已修复</div>}
         </div>
 
         {/* Right: Tree / Text tabs */}
@@ -338,6 +434,45 @@ export default function App() {
         <div style={{ flex: 1 }} />
         <span>UTF-8 · JSON</span>
       </div>
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="modal-overlay" onClick={() => setShowSettings(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span>AI 设置</span>
+              <button className="modal-close" onClick={() => setShowSettings(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <label className="modal-label">Claude API Key</label>
+              <input
+                className="modal-input"
+                type="password"
+                placeholder="sk-ant-..."
+                value={apiKeyDraft}
+                onChange={e => setApiKeyDraft(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Enter") {
+                    localStorage.setItem("ai_api_key", apiKeyDraft);
+                    setApiKey(apiKeyDraft);
+                    setShowSettings(false);
+                  }
+                }}
+                autoFocus
+              />
+              <p className="modal-hint">API Key 仅保存在本地 localStorage，不会上传。</p>
+            </div>
+            <div className="modal-footer">
+              <button className="modal-btn" onClick={() => setShowSettings(false)}>取消</button>
+              <button className="modal-btn primary" onClick={() => {
+                localStorage.setItem("ai_api_key", apiKeyDraft);
+                setApiKey(apiKeyDraft);
+                setShowSettings(false);
+              }}>保存</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
