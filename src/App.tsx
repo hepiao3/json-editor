@@ -33,6 +33,23 @@ function IconCollapseAll() {
   );
 }
 
+function IconCopy() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="5" y="5" width="8" height="9" rx="1.2" />
+      <path d="M3 11H2.8A1.8 1.8 0 0 1 1 9.2V2.8A1.8 1.8 0 0 1 2.8 1H9.2A1.8 1.8 0 0 1 11 2.8V3" />
+    </svg>
+  );
+}
+
+function IconCopied() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 8 6.5 12 13 4" />
+    </svg>
+  );
+}
+
 // ── Tree helpers ───────────────────────────────────────────────────────────
 function JsonValue({ value }: { value: unknown }) {
   if (value === null) return <span className="null">null</span>;
@@ -116,6 +133,19 @@ function parseAiResponse(raw: string): { success: boolean; result?: string; reas
   return { success: false, reason: "AI 返回格式异常，无法解析" };
 }
 
+// ── AI Provider config ─────────────────────────────────────────────────────
+interface ProviderConfig {
+  id: string;
+  name: string;
+  storageKey: string;
+  placeholder: string;
+}
+
+const PROVIDERS: ProviderConfig[] = [
+  { id: "claude",   name: "Claude (claude-3-5-haiku)",  storageKey: "claude_api_key",   placeholder: "sk-ant-..." },
+  { id: "deepseek", name: "DeepSeek (deepseek-chat)",   storageKey: "deepseek_api_key", placeholder: "sk-..."     },
+];
+
 // ── Main App ───────────────────────────────────────────────────────────────
 export default function App() {
   const [input, setInput] = useState("");
@@ -133,9 +163,18 @@ export default function App() {
   const [aiStatus, setAiStatus] = useState<AiStatus>("idle");
   const [aiMessage, setAiMessage] = useState("");
   const [showSettings, setShowSettings] = useState(false);
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem("ai_api_key") ?? "");
+  const [aiProvider, setAiProvider] = useState<string>(
+    () => localStorage.getItem("ai_provider") ?? PROVIDERS[0].id
+  );
+  const [apiKeys, setApiKeys] = useState<Record<string, string>>(() => {
+    const saved: Record<string, string> = {};
+    for (const p of PROVIDERS) saved[p.id] = localStorage.getItem(p.storageKey) ?? "";
+    return saved;
+  });
+  const [providerDraft, setProviderDraft] = useState<string>(PROVIDERS[0].id);
   const [apiKeyDraft, setApiKeyDraft] = useState("");
   const [splitRatio, setSplitRatio] = useState(0.5);
+  const activeApiKey = apiKeys[aiProvider] ?? "";
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const titleBarRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLDivElement>(null);
@@ -285,32 +324,68 @@ export default function App() {
     editorRef.current?.setValue(JSON.stringify(sample, null, 2));
   }
 
+  function openSettings() {
+    setProviderDraft(aiProvider);
+    setApiKeyDraft(apiKeys[aiProvider] ?? "");
+    setShowSettings(true);
+  }
+
+  function saveSettings() {
+    const p = PROVIDERS.find(x => x.id === providerDraft)!;
+    localStorage.setItem(p.storageKey, apiKeyDraft);
+    localStorage.setItem("ai_provider", providerDraft);
+    setApiKeys(prev => ({ ...prev, [providerDraft]: apiKeyDraft }));
+    setAiProvider(providerDraft);
+    setShowSettings(false);
+  }
+
   async function repairWithAI() {
-    if (!apiKey) {
-      setApiKeyDraft("");
-      setShowSettings(true);
+    if (!activeApiKey) {
+      openSettings();
       return;
     }
     setAiStatus("loading");
     const inputText = input.length > 8000 ? input.slice(0, 8000) : input;
     try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model: "claude-3-5-haiku-20241022",
-          max_tokens: 4096,
-          system: SYSTEM_PROMPT,
-          messages: [{ role: "user", content: inputText }],
-        }),
-      });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      const rawText = data.content?.[0]?.text ?? "";
+      let rawText = "";
+      if (aiProvider === "claude") {
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": activeApiKey,
+            "anthropic-version": "2023-06-01",
+          },
+          body: JSON.stringify({
+            model: "claude-3-5-haiku-20241022",
+            max_tokens: 4096,
+            system: SYSTEM_PROMPT,
+            messages: [{ role: "user", content: inputText }],
+          }),
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        rawText = data.content?.[0]?.text ?? "";
+      } else if (aiProvider === "deepseek") {
+        const response = await fetch("https://api.deepseek.com/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${activeApiKey}`,
+          },
+          body: JSON.stringify({
+            model: "deepseek-chat",
+            max_tokens: 4096,
+            messages: [
+              { role: "system", content: SYSTEM_PROMPT },
+              { role: "user", content: inputText },
+            ],
+          }),
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        rawText = data.choices?.[0]?.message?.content ?? "";
+      }
       const aiResult = parseAiResponse(rawText);
       if (aiResult.success && aiResult.result) {
         try {
@@ -342,7 +417,7 @@ export default function App() {
       <div ref={titleBarRef} className="titlebar" data-tauri-drag-region>
         <span className="title">JSON Editor</span>
         <div className="titlebar-actions">
-          <button className="theme-toggle" onClick={() => { setApiKeyDraft(apiKey); setShowSettings(true); }} title="AI 设置">⚙</button>
+          <button className="theme-toggle" onClick={openSettings} title="AI 设置">⚙</button>
           <button className="theme-toggle" onClick={loadSample} title="加载示例">✦</button>
           <button className="theme-toggle" onClick={() => editorRef.current?.setValue("")} title="清空">✕</button>
           <button className="theme-toggle" onClick={() => setTheme(t => {
@@ -377,8 +452,8 @@ export default function App() {
           </div>
           <div className="editor-wrap">
             {input && (
-              <button className="editor-copy-btn" onClick={copyInput} onMouseLeave={() => setCopiedInput(false)}>
-                {copiedInput ? "✓ 已复制" : "⎘ 复制"}
+              <button className="editor-copy-btn icon-btn" onClick={copyInput} onMouseLeave={() => setCopiedInput(false)} title={copiedInput ? "已复制" : "复制"}>
+                {copiedInput ? <IconCopied /> : <IconCopy />}
               </button>
             )}
             <Editor
@@ -450,8 +525,8 @@ export default function App() {
           </div>
           <div className="pane-body">
             {parsed !== null && (
-              <button className="editor-copy-btn" onClick={copyOutput} onMouseLeave={() => setCopiedOutput(false)}>
-                {copiedOutput ? "✓ 已复制" : "⎘ 复制"}
+              <button className="editor-copy-btn icon-btn" onClick={copyOutput} onMouseLeave={() => setCopiedOutput(false)} title={copiedOutput ? "已复制" : "复制"}>
+                {copiedOutput ? <IconCopied /> : <IconCopy />}
               </button>
             )}
             {tab === "tree" && (
@@ -493,31 +568,34 @@ export default function App() {
               <button className="modal-close" onClick={() => setShowSettings(false)}>✕</button>
             </div>
             <div className="modal-body">
-              <label className="modal-label">Claude API Key</label>
+              <label className="modal-label">模型</label>
+              <select
+                className="modal-select"
+                value={providerDraft}
+                onChange={e => {
+                  setProviderDraft(e.target.value);
+                  setApiKeyDraft(apiKeys[e.target.value] ?? "");
+                }}
+              >
+                {PROVIDERS.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+              <label className="modal-label" style={{ marginTop: 14 }}>API Key</label>
               <input
                 className="modal-input"
                 type="password"
-                placeholder="sk-ant-..."
+                placeholder={PROVIDERS.find(p => p.id === providerDraft)?.placeholder ?? ""}
                 value={apiKeyDraft}
                 onChange={e => setApiKeyDraft(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === "Enter") {
-                    localStorage.setItem("ai_api_key", apiKeyDraft);
-                    setApiKey(apiKeyDraft);
-                    setShowSettings(false);
-                  }
-                }}
+                onKeyDown={e => { if (e.key === "Enter") saveSettings(); }}
                 autoFocus
               />
               <p className="modal-hint">API Key 仅保存在本地 localStorage，不会上传。</p>
             </div>
             <div className="modal-footer">
               <button className="modal-btn" onClick={() => setShowSettings(false)}>取消</button>
-              <button className="modal-btn primary" onClick={() => {
-                localStorage.setItem("ai_api_key", apiKeyDraft);
-                setApiKey(apiKeyDraft);
-                setShowSettings(false);
-              }}>保存</button>
+              <button className="modal-btn primary" onClick={saveSettings}>保存</button>
             </div>
           </div>
         </div>
