@@ -19,9 +19,9 @@ function JsonValue({ value }: { value: unknown }) {
 }
 
 function TreeNodeRow({
-  keyName, value, depth, collapseKey = 0, expandKey = 0,
-}: { keyName: string | null; value: unknown; depth: number; collapseKey?: number; expandKey?: number }) {
-  const [open, setOpen] = useState(() => collapseKey <= expandKey);
+  keyName, value, depth, collapseKey = 0, expandAllKey = 0,
+}: { keyName: string | null; value: unknown; depth: number; collapseKey?: number; expandAllKey?: number }) {
+  const [open, setOpen] = useState(true);
   const isObj = typeof value === "object" && value !== null;
 
   useEffect(() => {
@@ -29,8 +29,8 @@ function TreeNodeRow({
   }, [collapseKey]);
 
   useEffect(() => {
-    if (expandKey > 0) setOpen(true);
-  }, [expandKey]);
+    if (expandAllKey > 0) setOpen(true);
+  }, [expandAllKey]);
 
   const indent = depth * 20;
 
@@ -58,16 +58,14 @@ function TreeNodeRow({
         {!open && <span className="hint">{entries.length} {isArr ? "items" : "keys"}</span>}
         {!open && <span className="bracket">{close_}</span>}
       </div>
-      {open && (
-        <>
-          {entries.map(([k, v]) => (
-            <TreeNodeRow key={k} keyName={isArr ? null : k} value={v} depth={depth + 1} collapseKey={collapseKey} expandKey={expandKey} />
-          ))}
-          <div className="tree-row" style={{ paddingLeft: indent }}>
-            <span className="bracket">{close_}</span>
-          </div>
-        </>
-      )}
+      <div style={{ display: open ? undefined : "none" }}>
+        {entries.map(([k, v]) => (
+          <TreeNodeRow key={k} keyName={isArr ? null : k} value={v} depth={depth + 1} collapseKey={collapseKey} expandAllKey={expandAllKey} />
+        ))}
+        <div className="tree-row" style={{ paddingLeft: indent }}>
+          <span className="bracket">{close_}</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -82,7 +80,7 @@ export default function App() {
   const [copiedInput, setCopiedInput] = useState(false);
   const [copiedOutput, setCopiedOutput] = useState(false);
   const [collapseKey, setCollapseKey] = useState(0);
-  const [expandKey, setExpandKey] = useState(0);
+  const [expandAllKey, setExpandAllKey] = useState(0);
   const [theme, setTheme] = useState<"dark" | "light">(
     () => (localStorage.getItem("theme") as "dark" | "light") ?? "dark"
   );
@@ -143,12 +141,68 @@ export default function App() {
 
   function loadSample() {
     const sample = {
-      name: "json-editor", version: "1.0.0",
-      author: { name: "Claude", email: "hello@anthropic.com" },
-      features: ["格式化", "压缩", "排序", "树形预览"],
-      config: { theme: "dark", fontSize: 14, tabSize: 2, wordWrap: true },
-      stats: { stars: 2048, active: true, score: 9.8 },
+      id: "proj-20240101",
+      name: "json-editor",
+      version: "2.1.0",
+      published: true,
       license: null,
+      repository: {
+        type: "git",
+        url: "https://github.com/example/json-editor",
+        branches: {
+          main: { protected: true, rules: ["require-pr", "require-review"] },
+          dev: { protected: false, rules: [] },
+        },
+      },
+      author: {
+        name: "Claude",
+        email: "hello@anthropic.com",
+        social: {
+          github: "claude-dev",
+          twitter: null,
+          links: ["https://anthropic.com", "https://claude.ai"],
+        },
+      },
+      contributors: [
+        { name: "Alice", role: "frontend", commits: 142, active: true },
+        { name: "Bob", role: "backend", commits: 87, active: false },
+      ],
+      config: {
+        theme: "dark",
+        editor: {
+          fontSize: 14,
+          tabSize: 2,
+          wordWrap: true,
+          minimap: { enabled: false },
+          keybindings: { format: "Shift+Alt+F", save: "Ctrl+S" },
+        },
+        performance: {
+          maxFileSize: 10485760,
+          lazyRender: true,
+          virtualScroll: { enabled: true, itemHeight: 24 },
+        },
+      },
+      features: {
+        core: ["格式化", "压缩", "树形预览", "文本预览"],
+        experimental: {
+          enabled: true,
+          list: [
+            { name: "schema-validate", stable: false, since: "2.0.0" },
+            { name: "diff-view", stable: false, since: "2.1.0" },
+          ],
+        },
+      },
+      stats: {
+        stars: 2048,
+        forks: 316,
+        score: 9.8,
+        downloads: { total: 184200, monthly: 12400, weekly: 3100 },
+        issues: { open: 12, closed: 238, labels: { bug: 4, enhancement: 7, docs: 1 } },
+      },
+      changelog: [
+        { version: "2.1.0", date: "2024-11-01", breaking: false, changes: ["新增逐层展开", "修复闪烁问题"] },
+        { version: "2.0.0", date: "2024-09-15", breaking: true, changes: ["重构树形组件", "新增主题切换"] },
+      ],
     };
     editorRef.current?.setValue(JSON.stringify(sample, null, 2));
   }
@@ -239,7 +293,7 @@ export default function App() {
             <div className="pane-header-right">
               {tab === "tree" && parsed !== null && (
                 <>
-                  <button className="pane-copy-btn" onClick={() => setExpandKey(k => k + 1)}>⊞ 全部展开</button>
+                  <button className="pane-copy-btn" onClick={() => setExpandAllKey(k => k + 1)}>⊞ 全部展开</button>
                   <button className="pane-copy-btn" onClick={() => setCollapseKey(k => k + 1)}>⊟ 全部收起</button>
                 </>
               )}
@@ -254,7 +308,7 @@ export default function App() {
             {tab === "tree" && (
               <div className="tree-view">
                 {parsed !== null ? (
-                  <TreeNodeRow keyName={null} value={parsed} depth={0} collapseKey={collapseKey} expandKey={expandKey} />
+                  <TreeNodeRow keyName={null} value={parsed} depth={0} collapseKey={collapseKey} expandAllKey={expandAllKey} />
                 ) : (
                   <div className="empty">
                     <div className="big">{ "{}" }</div>
