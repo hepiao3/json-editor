@@ -19,10 +19,18 @@ function JsonValue({ value }: { value: unknown }) {
 }
 
 function TreeNodeRow({
-  keyName, value, depth,
-}: { keyName: string | null; value: unknown; depth: number }) {
-  const [open, setOpen] = useState(true);
+  keyName, value, depth, collapseKey = 0, expandKey = 0,
+}: { keyName: string | null; value: unknown; depth: number; collapseKey?: number; expandKey?: number }) {
+  const [open, setOpen] = useState(() => collapseKey <= expandKey);
   const isObj = typeof value === "object" && value !== null;
+
+  useEffect(() => {
+    if (collapseKey > 0) setOpen(false);
+  }, [collapseKey]);
+
+  useEffect(() => {
+    if (expandKey > 0) setOpen(true);
+  }, [expandKey]);
 
   const indent = depth * 20;
 
@@ -53,7 +61,7 @@ function TreeNodeRow({
       {open && (
         <>
           {entries.map(([k, v]) => (
-            <TreeNodeRow key={k} keyName={isArr ? null : k} value={v} depth={depth + 1} />
+            <TreeNodeRow key={k} keyName={isArr ? null : k} value={v} depth={depth + 1} collapseKey={collapseKey} expandKey={expandKey} />
           ))}
           <div className="tree-row" style={{ paddingLeft: indent }}>
             <span className="bracket">{close_}</span>
@@ -73,14 +81,16 @@ export default function App() {
   const [tab, setTab] = useState<TabId>("tree");
   const [copiedInput, setCopiedInput] = useState(false);
   const [copiedOutput, setCopiedOutput] = useState(false);
+  const [collapseKey, setCollapseKey] = useState(0);
+  const [expandKey, setExpandKey] = useState(0);
   const [theme, setTheme] = useState<"dark" | "light">(
     () => (localStorage.getItem("theme") as "dark" | "light") ?? "dark"
   );
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
-  const titlebarRef = useRef<HTMLDivElement>(null);
+  const titleBarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const el = titlebarRef.current;
+    const el = titleBarRef.current;
     if (!el) return;
     const onMouseDown = (e: MouseEvent) => {
       if (e.button !== 0) return;
@@ -123,14 +133,12 @@ export default function App() {
   async function copyInput() {
     await writeText(input);
     setCopiedInput(true);
-    setTimeout(() => setCopiedInput(false), 1500);
   }
 
   async function copyOutput() {
     if (!parsed) return;
     await writeText(JSON.stringify(parsed, null, 2));
     setCopiedOutput(true);
-    setTimeout(() => setCopiedOutput(false), 1500);
   }
 
   function loadSample() {
@@ -152,7 +160,7 @@ export default function App() {
   return (
     <div className="app" data-theme={theme}>
       {/* Titlebar */}
-      <div ref={titlebarRef} className="titlebar" data-tauri-drag-region>
+      <div ref={titleBarRef} className="titlebar" data-tauri-drag-region>
         <span className="title">JSON Editor</span>
         <div className="titlebar-actions">
           <button className="theme-toggle" onClick={() => setTheme(t => {
@@ -185,11 +193,13 @@ export default function App() {
         <div className="pane left-pane">
           <div className="pane-header">
             <span>输入</span>
-            <button className="pane-copy-btn" onClick={copyInput} disabled={!input}>
-              {copiedInput ? "✓ 已复制" : "⎘ 复制"}
-            </button>
           </div>
           <div className="editor-wrap">
+            {input && (
+              <button className="editor-copy-btn" onClick={copyInput} onMouseLeave={() => setCopiedInput(false)}>
+                {copiedInput ? "✓ 已复制" : "⎘ 复制"}
+              </button>
+            )}
             <Editor
               height="100%"
               defaultLanguage="json"
@@ -226,15 +236,25 @@ export default function App() {
                 <button className={`tab ${tab === "text" ? "active" : ""}`} onClick={() => setTab("text")}>文本预览</button>
               </div>
             </div>
-            <button className="pane-copy-btn" onClick={copyOutput} disabled={!parsed}>
-              {copiedOutput ? "✓ 已复制" : "⎘ 复制 JSON"}
-            </button>
+            <div className="pane-header-right">
+              {tab === "tree" && parsed !== null && (
+                <>
+                  <button className="pane-copy-btn" onClick={() => setExpandKey(k => k + 1)}>⊞ 全部展开</button>
+                  <button className="pane-copy-btn" onClick={() => setCollapseKey(k => k + 1)}>⊟ 全部收起</button>
+                </>
+              )}
+            </div>
           </div>
           <div className="pane-body">
+            {parsed !== null && (
+              <button className="editor-copy-btn" onClick={copyOutput} onMouseLeave={() => setCopiedOutput(false)}>
+                {copiedOutput ? "✓ 已复制" : "⎘ 复制"}
+              </button>
+            )}
             {tab === "tree" && (
               <div className="tree-view">
                 {parsed !== null ? (
-                  <TreeNodeRow keyName={null} value={parsed} depth={0} />
+                  <TreeNodeRow keyName={null} value={parsed} depth={0} collapseKey={collapseKey} expandKey={expandKey} />
                 ) : (
                   <div className="empty">
                     <div className="big">{ "{}" }</div>
