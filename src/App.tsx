@@ -10,6 +10,29 @@ type Status = "idle" | "ok" | "error";
 type AiStatus = "idle" | "loading" | "success" | "fail" | "error";
 type TabId = "tree" | "text";
 
+// ── Icons ──────────────────────────────────────────────────────────────────
+function IconExpandAll() {
+  // 两个 chevron 向外张开，表示展开
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 6L8 1L13 6" />
+      <path d="M3 10L8 15L13 10" />
+      <path d="M4 8H12" />
+    </svg>
+  );
+}
+
+function IconCollapseAll() {
+  // 两个 chevron 向内收拢，表示收起
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 1L8 6L13 1" />
+      <path d="M3 15L8 10L13 15" />
+      <path d="M4 8H12" />
+    </svg>
+  );
+}
+
 // ── Tree helpers ───────────────────────────────────────────────────────────
 function JsonValue({ value }: { value: unknown }) {
   if (value === null) return <span className="null">null</span>;
@@ -112,8 +135,11 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [apiKey, setApiKey] = useState(() => localStorage.getItem("ai_api_key") ?? "");
   const [apiKeyDraft, setApiKeyDraft] = useState("");
+  const [splitRatio, setSplitRatio] = useState(0.5);
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const titleBarRef = useRef<HTMLDivElement>(null);
+  const mainRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
 
   useEffect(() => {
     const el = titleBarRef.current;
@@ -125,6 +151,34 @@ export default function App() {
     };
     el.addEventListener("mousedown", onMouseDown);
     return () => el.removeEventListener("mousedown", onMouseDown);
+  }, []);
+
+  const handleDividerMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDragging.current = true;
+    document.documentElement.style.cursor = "col-resize";
+    document.documentElement.style.userSelect = "none";
+  }, []);
+
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isDragging.current || !mainRef.current) return;
+      const rect = mainRef.current.getBoundingClientRect();
+      const ratio = (e.clientX - rect.left) / rect.width;
+      setSplitRatio(Math.max(0.2, Math.min(0.8, ratio)));
+    };
+    const onMouseUp = () => {
+      if (!isDragging.current) return;
+      isDragging.current = false;
+      document.documentElement.style.cursor = "";
+      document.documentElement.style.userSelect = "";
+    };
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
   }, []);
 
   const handleEditorMount: OnMount = (editor) => {
@@ -150,11 +204,6 @@ export default function App() {
     if (!parsed) return;
     const formatted = JSON.stringify(parsed, null, 2);
     editorRef.current?.setValue(formatted);
-  }
-
-  function minify() {
-    if (!parsed) return;
-    editorRef.current?.setValue(JSON.stringify(parsed));
   }
 
   async function copyInput() {
@@ -316,17 +365,14 @@ export default function App() {
       </div>
 
       {/* Main */}
-      <div className="main">
+      <div className="main" ref={mainRef}>
         {/* Left: Monaco Editor */}
-        <div className="pane left-pane">
+        <div className="pane left-pane" style={{ width: `${splitRatio * 100}%` }}>
           <div className="pane-header">
             <div className="pane-header-left">
               <span>输入</span>
             </div>
             <div className="pane-header-right">
-              {parsed !== null && (
-                <button className="pane-copy-btn" onClick={minify}>⇲ 压缩</button>
-              )}
             </div>
           </div>
           <div className="editor-wrap">
@@ -380,6 +426,9 @@ export default function App() {
           {aiStatus === "success" && <div className="ai-success-bar">✓ AI 已修复</div>}
         </div>
 
+        {/* Divider */}
+        <div className="divider" onMouseDown={handleDividerMouseDown} />
+
         {/* Right: Tree / Text tabs */}
         <div className="pane right-pane">
           <div className="pane-header">
@@ -393,8 +442,8 @@ export default function App() {
             <div className="pane-header-right">
               {tab === "tree" && parsed !== null && (
                 <>
-                  <button className="pane-copy-btn" onClick={() => setExpandAllKey(k => k + 1)}>⊞ 全部展开</button>
-                  <button className="pane-copy-btn" onClick={() => setCollapseKey(k => k + 1)}>⊟ 全部收起</button>
+                  <button className="pane-copy-btn icon-btn" onClick={() => setExpandAllKey(k => k + 1)} title="全部展开"><IconExpandAll /></button>
+                  <button className="pane-copy-btn icon-btn" onClick={() => setCollapseKey(k => k + 1)} title="全部收起"><IconCollapseAll /></button>
                 </>
               )}
             </div>
