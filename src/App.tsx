@@ -33,6 +33,31 @@ function IconCollapseAll() {
   );
 }
 
+function IconFormat() {
+  // 三行文本 + 左侧缩进线，表示格式化
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 3H14" />
+      <path d="M5 7H14" />
+      <path d="M2 7V13" />
+      <path d="M5 11H14" />
+    </svg>
+  );
+}
+
+function IconMinify() {
+  // 三行压缩为一行，表示压缩
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 4H14" />
+      <path d="M2 8H14" />
+      <path d="M2 12H14" />
+      <path d="M6 6L8 8L6 10" />
+      <path d="M10 6L8 8L10 10" />
+    </svg>
+  );
+}
+
 function IconCopy() {
   return (
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -245,6 +270,11 @@ export default function App() {
     editorRef.current?.setValue(formatted);
   }
 
+  function minify() {
+    if (!parsed) return;
+    editorRef.current?.setValue(JSON.stringify(parsed));
+  }
+
   async function copyInput() {
     await writeText(input);
     setCopiedInput(true);
@@ -448,6 +478,12 @@ export default function App() {
               <span>输入</span>
             </div>
             <div className="pane-header-right">
+              {parsed !== null && (
+                <>
+                  <button className="pane-copy-btn icon-btn" onClick={format} title="格式化"><IconFormat /></button>
+                  <button className="pane-copy-btn icon-btn" onClick={minify} title="压缩"><IconMinify /></button>
+                </>
+              )}
             </div>
           </div>
           <div className="editor-wrap">
