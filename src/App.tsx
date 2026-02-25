@@ -32,31 +32,6 @@ function IconCollapseAll() {
   );
 }
 
-function IconFormat() {
-  // 三行文本 + 左侧缩进线，表示格式化
-  return (
-    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2 3H14" />
-      <path d="M5 7H14" />
-      <path d="M2 7V13" />
-      <path d="M5 11H14" />
-    </svg>
-  );
-}
-
-function IconMinify() {
-  // 三行压缩为一行，表示压缩
-  return (
-    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2 4H14" />
-      <path d="M2 8H14" />
-      <path d="M2 12H14" />
-      <path d="M6 6L8 8L6 10" />
-      <path d="M10 6L8 8L10 10" />
-    </svg>
-  );
-}
-
 function IconCopy() {
   return (
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -149,7 +124,7 @@ function parseAiResponse(raw: string): { success: boolean; result?: string; reas
   try {
     return JSON.parse(text);
   } catch {
-    const match = text.match(/\{[\s\S]*\}/);
+    const match = text.match(/\{[\s\S]*}/);
     if (match) {
       try { return JSON.parse(match[0]); } catch { /* fall through */ }
     }
@@ -196,15 +171,12 @@ export default function App() {
   });
   const [providerDraft, setProviderDraft] = useState<string>(PROVIDERS[0].id);
   const [apiKeyDraft, setApiKeyDraft] = useState("");
-  const [splitRatio, setSplitRatio] = useState(0.5);
   const [viewMode, setViewMode] = useState<"editor" | "tree">("editor");
   const activeApiKey = apiKeys[aiProvider] ?? "";
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const inputRef = useRef(input);
   useEffect(() => { inputRef.current = input; }, [input]);
   const titleBarRef = useRef<HTMLDivElement>(null);
-  const mainRef = useRef<HTMLDivElement>(null);
-  const isDragging = useRef(false);
 
   useEffect(() => {
     const el = titleBarRef.current;
@@ -245,34 +217,6 @@ export default function App() {
     return () => { unlisten?.(); };
   }, []);
 
-  const handleDividerMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    isDragging.current = true;
-    document.documentElement.style.cursor = "col-resize";
-    document.documentElement.style.userSelect = "none";
-  }, []);
-
-  useEffect(() => {
-    const onMouseMove = (e: MouseEvent) => {
-      if (!isDragging.current || !mainRef.current) return;
-      const rect = mainRef.current.getBoundingClientRect();
-      const ratio = (e.clientX - rect.left) / rect.width;
-      setSplitRatio(Math.max(0.2, Math.min(0.8, ratio)));
-    };
-    const onMouseUp = () => {
-      if (!isDragging.current) return;
-      isDragging.current = false;
-      document.documentElement.style.cursor = "";
-      document.documentElement.style.userSelect = "";
-    };
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
-    return () => {
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
-    };
-  }, []);
-
   const handleEditorMount: OnMount = async (editor) => {
     editorRef.current = editor;
     if (!input) {
@@ -309,17 +253,6 @@ export default function App() {
       setParsed(null);
     }
   }, []);
-
-  function format() {
-    if (!parsed) return;
-    const formatted = JSON.stringify(parsed, null, 2);
-    editorRef.current?.setValue(formatted);
-  }
-
-  function minify() {
-    if (!parsed) return;
-    editorRef.current?.setValue(JSON.stringify(parsed));
-  }
 
   async function copyInput() {
     await writeText(input);
@@ -530,7 +463,7 @@ export default function App() {
       </div>
 
       {/* Main */}
-      <div className="main" ref={mainRef}>
+      <div className="main">
         {/* Left: Monaco Editor */}
         <div className="pane left-pane" style={{ width: "100%", display: viewMode === "editor" ? "flex" : "none" }}>
             <div className="editor-wrap">
