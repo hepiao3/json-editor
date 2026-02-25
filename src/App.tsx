@@ -65,8 +65,8 @@ function TreeNodeRow({
   const isObj = typeof value === "object" && value !== null;
 
   useEffect(() => {
-    if (collapseKey > 0) setOpen(false);
-  }, [collapseKey]);
+    if (collapseKey > 0 && depth > 0) setOpen(false);
+  }, [collapseKey, depth]);
 
   useEffect(() => {
     if (expandAllKey > 0) setOpen(true);
