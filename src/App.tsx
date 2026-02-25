@@ -431,7 +431,7 @@ export default function App() {
         <span className="title">JSON Editor</span>
         <div className="titlebar-actions">
           <button className="theme-toggle" onClick={openSettings} title="AI 设置">⚙</button>
-          <button className="theme-toggle" onClick={loadSample} title="加载示例">✦</button>
+          {import.meta.env.DEV && <button className="theme-toggle" onClick={loadSample} title="加载示例">✦</button>}
           <button className="theme-toggle" onClick={() => editorRef.current?.setValue("")} title="清空">✕</button>
           <button className="theme-toggle" onClick={() => setTheme(t => {
               const next = t === "dark" ? "light" : "dark";
