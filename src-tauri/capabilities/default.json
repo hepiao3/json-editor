@@ -6,6 +6,7 @@
     "core:default",
     "core:window:allow-start-dragging",
     "clipboard-manager:default",
-    "clipboard-manager:allow-write-text"
+    "clipboard-manager:allow-write-text",
+    "clipboard-manager:allow-read-text"
   ]
 }

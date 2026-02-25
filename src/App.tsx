@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import Editor, { OnMount } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
-import { writeText } from "@tauri-apps/plugin-clipboard-manager";
+import { writeText, readText } from "@tauri-apps/plugin-clipboard-manager";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import "./App.css";
 
@@ -201,6 +201,8 @@ export default function App() {
   const [splitRatio, setSplitRatio] = useState(0.5);
   const activeApiKey = apiKeys[aiProvider] ?? "";
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
+  const inputRef = useRef(input);
+  useEffect(() => { inputRef.current = input; }, [input]);
   const titleBarRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
@@ -215,6 +217,26 @@ export default function App() {
     };
     el.addEventListener("mousedown", onMouseDown);
     return () => el.removeEventListener("mousedown", onMouseDown);
+  }, []);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    getCurrentWindow()
+      .onFocusChanged(({ payload: focused }) => {
+        if (!focused) return;
+        const editor = editorRef.current;
+        if (!editor || inputRef.current) return; // 编辑器未就绪或已有内容，跳过
+        readText()
+          .then((clipText) => {
+            if (clipText && clipText.trim()) {
+              editor.setValue(clipText);
+              setInput(clipText);
+            }
+          })
+          .catch(() => {});
+      })
+      .then((fn) => { unlisten = fn; });
+    return () => { unlisten?.(); };
   }, []);
 
   const handleDividerMouseDown = useCallback((e: React.MouseEvent) => {
@@ -245,8 +267,19 @@ export default function App() {
     };
   }, []);
 
-  const handleEditorMount: OnMount = (editor) => {
+  const handleEditorMount: OnMount = async (editor) => {
     editorRef.current = editor;
+    if (!input) {
+      try {
+        const clipText = await readText();
+        if (clipText && clipText.trim()) {
+          editor.setValue(clipText);
+          setInput(clipText);
+        }
+      } catch {
+        // 剪贴板为空或无权限时，静默忽略
+      }
+    }
   };
 
   const handleChange = useCallback((val: string | undefined) => {
