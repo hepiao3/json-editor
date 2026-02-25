@@ -507,7 +507,6 @@ export default function App() {
             })} title={theme === "dark" ? "切换亮色主题" : "切换暗色主题"}>
             {theme === "dark" ? "☀" : "☾"}
           </button>
-          <span className="badge">v1.0</span>
         </div>
       </div>
 
