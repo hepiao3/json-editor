@@ -8,7 +8,6 @@ import "./App.css";
 // ── Types ──────────────────────────────────────────────────────────────────
 type Status = "idle" | "ok" | "error";
 type AiStatus = "idle" | "loading" | "success" | "fail" | "error";
-type TabId = "tree" | "text";
 
 // ── Icons ──────────────────────────────────────────────────────────────────
 function IconExpandAll() {
@@ -177,7 +176,6 @@ export default function App() {
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
   const [parsed, setParsed] = useState<unknown>(null);
-  const [tab, setTab] = useState<TabId>("tree");
   const [copiedInput, setCopiedInput] = useState(false);
   const [copiedOutput, setCopiedOutput] = useState(false);
   const [collapseKey, setCollapseKey] = useState(0);
@@ -573,18 +571,14 @@ export default function App() {
         {/* Divider */}
         <div className="divider" onMouseDown={handleDividerMouseDown} />
 
-        {/* Right: Tree / Text tabs */}
+        {/* Right: Tree view */}
         <div className="pane right-pane">
           <div className="pane-header">
             <div className="pane-header-left">
               <span>输出</span>
-              <div className="tabs">
-                <button className={`tab ${tab === "tree" ? "active" : ""}`} onClick={() => setTab("tree")}>树形预览</button>
-                <button className={`tab ${tab === "text" ? "active" : ""}`} onClick={() => setTab("text")}>文本预览</button>
-              </div>
             </div>
             <div className="pane-header-right">
-              {tab === "tree" && parsed !== null && (
+              {parsed !== null && (
                 <>
                   <button className="pane-copy-btn icon-btn" onClick={() => setExpandAllKey(k => k + 1)} title="全部展开"><IconExpandAll /></button>
                   <button className="pane-copy-btn icon-btn" onClick={() => setCollapseKey(k => k + 1)} title="全部收起"><IconCollapseAll /></button>
@@ -598,23 +592,16 @@ export default function App() {
                 {copiedOutput ? <IconCopied /> : <IconCopy />}
               </button>
             )}
-            {tab === "tree" && (
-              <div className="tree-view">
-                {parsed !== null ? (
-                  <TreeNodeRow keyName={null} value={parsed} depth={0} collapseKey={collapseKey} expandAllKey={expandAllKey} />
-                ) : (
-                  <div className="empty">
-                    <div className="big">{ "{}" }</div>
-                    <div>输入 JSON 查看树形结构</div>
-                  </div>
-                )}
-              </div>
-            )}
-            {tab === "text" && (
-              <div className="output-view">
-                <pre>{parsed !== null ? JSON.stringify(parsed, null, 2) : "// 等待有效 JSON..."}</pre>
-              </div>
-            )}
+            <div className="tree-view">
+              {parsed !== null ? (
+                <TreeNodeRow keyName={null} value={parsed} depth={0} collapseKey={collapseKey} expandAllKey={expandAllKey} />
+              ) : (
+                <div className="empty">
+                  <div className="big">{ "{}" }</div>
+                  <div>输入 JSON 查看树形结构</div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

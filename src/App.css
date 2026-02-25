@@ -316,18 +316,6 @@ html, body, #root { height: 100%; }
 .pane-header-left { display: flex; align-items: center; gap: 12px; }
 .pane-header-right { display: flex; align-items: center; gap: 6px; }
 
-/* Tabs */
-.tabs { display: flex; gap: 4px; }
-.tab {
-  padding: 4px 12px; border-radius: 6px; border: none;
-  background: transparent; color: var(--muted);
-  font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 600;
-  cursor: pointer; letter-spacing: .06em; text-transform: uppercase;
-  transition: all .15s;
-}
-.tab:hover { color: var(--dim); }
-.tab.active { background: var(--accent-dim); color: var(--accent); }
-
 /* Tree View */
 .tree-view {
   height: 100%; overflow: auto; padding: 16px;
@@ -361,15 +349,6 @@ html, body, #root { height: 100%; }
 }
 .empty .big { font-size: 36px; opacity: .3; }
 
-/* Output View */
-.output-view {
-  height: 100%; overflow: auto; padding: 20px;
-  background: var(--editor);
-}
-.output-view pre {
-  font-family: 'JetBrains Mono', monospace; font-size: 13.5px;
-  line-height: 1.7; color: var(--str); white-space: pre-wrap;
-}
 
 /* Footer */
 .footer {
