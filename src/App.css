@@ -93,9 +93,43 @@ html, body, #root { height: 100%; }
 
 /* Toolbar */
 .toolbar {
-  display: flex; align-items: center; gap: 8px;
-  padding: 10px 16px; background: var(--panel);
+  display: flex; align-items: center; justify-content: center;
+  padding: 8px 16px; background: var(--panel);
   border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.view-switcher {
+  display: flex;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 2px;
+  gap: 2px;
+}
+.view-switcher-btn {
+  padding: 5px 20px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-family: 'Syne', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: .03em;
+  transition: all .15s;
+}
+.view-switcher-btn:hover:not(:disabled):not(.active) {
+  color: var(--dim);
+  background: rgba(255,255,255,.04);
+}
+.view-switcher-btn.active {
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0,0,0,.25);
+}
+.view-switcher-btn:disabled {
+  opacity: .3;
+  cursor: not-allowed;
 }
 .btn {
   display: flex; align-items: center; gap: 6px;
@@ -198,6 +232,13 @@ html, body, #root { height: 100%; }
 .editor-copy-btn.icon-btn { padding: 4px 7px; display: flex; align-items: center; justify-content: center; }
 .pane-body { flex: 1; overflow: hidden; position: relative; }
 .pane-body:hover .editor-copy-btn { opacity: 1; pointer-events: auto; }
+.tree-actions {
+  position: absolute; bottom: 10px; right: 18px; z-index: 10;
+  display: flex; gap: 10px;
+  opacity: 0; pointer-events: none; transition: opacity .15s;
+}
+.pane-body:hover .tree-actions { opacity: 1; pointer-events: auto; }
+.tree-actions .editor-copy-btn { position: static; }
 .error-bar {
   display: flex; align-items: center; gap: 8px;
   padding: 8px 16px; background: var(--error-dim);

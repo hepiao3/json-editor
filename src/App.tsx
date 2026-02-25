@@ -197,6 +197,7 @@ export default function App() {
   const [providerDraft, setProviderDraft] = useState<string>(PROVIDERS[0].id);
   const [apiKeyDraft, setApiKeyDraft] = useState("");
   const [splitRatio, setSplitRatio] = useState(0.5);
+  const [viewMode, setViewMode] = useState<"editor" | "tree">("editor");
   const activeApiKey = apiKeys[aiProvider] ?? "";
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const inputRef = useRef(input);
@@ -482,6 +483,10 @@ export default function App() {
     }
   }
 
+  useEffect(() => {
+    if (status !== "ok") setViewMode("editor");
+  }, [status]);
+
   const bytes = new Blob([input]).size;
   const sizeLabel = bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`;
   const lineCount = input ? input.split("\n").length : 0;
@@ -508,116 +513,104 @@ export default function App() {
 
       {/* Toolbar */}
       <div className="toolbar">
-        <div className={`status-pill ${status}`}>
-          <span className="dot" />
-          {status === "idle" ? "等待输入" : status === "ok" ? "✓ 有效 JSON" : "✗ 语法错误"}
+        <div className="view-switcher">
+          <button
+            className={`view-switcher-btn${viewMode === "editor" ? " active" : ""}`}
+            onClick={() => setViewMode("editor")}
+          >
+            编辑视图
+          </button>
+          <button
+            className={`view-switcher-btn${viewMode === "tree" ? " active" : ""}`}
+            onClick={() => setViewMode("tree")}
+            disabled={status !== "ok"}
+          >
+            树形视图
+          </button>
         </div>
       </div>
 
       {/* Main */}
       <div className="main" ref={mainRef}>
         {/* Left: Monaco Editor */}
-        <div className="pane left-pane" style={{ width: `${splitRatio * 100}%` }}>
-          <div className="pane-header">
-            <div className="pane-header-left">
-              <span>输入</span>
-            </div>
-            <div className="pane-header-right">
-              {parsed !== null && (
-                <>
-                  <button className="pane-copy-btn icon-btn" onClick={format} title="格式化"><IconFormat /></button>
-                  <button className="pane-copy-btn icon-btn" onClick={minify} title="压缩"><IconMinify /></button>
-                </>
+        <div className="pane left-pane" style={{ width: "100%", display: viewMode === "editor" ? "flex" : "none" }}>
+            <div className="editor-wrap">
+              {input && (
+                <button className="editor-copy-btn icon-btn" onClick={copyInput} onMouseLeave={() => setCopiedInput(false)} title={copiedInput ? "已复制" : "复制"}>
+                  {copiedInput ? <IconCopied /> : <IconCopy />}
+                </button>
               )}
+              <Editor
+                height="100%"
+                defaultLanguage="json"
+                theme={theme === "dark" ? "vs-dark" : "vs"}
+                options={{
+                  fontSize: 13.5, lineHeight: 24,
+                  minimap: { enabled: false },
+                  scrollBeyondLastLine: false,
+                  scrollbar: {
+                    verticalScrollbarSize: 6,
+                    horizontalScrollbarSize: 6,
+                    useShadows: false,
+                  },
+                  renderLineHighlight: "none",
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontLigatures: true,
+                  padding: { top: 16, bottom: 16 },
+                  tabSize: 2,
+                }}
+                onChange={handleChange}
+                onMount={handleEditorMount}
+              />
             </div>
-          </div>
-          <div className="editor-wrap">
-            {input && (
-              <button className="editor-copy-btn icon-btn" onClick={copyInput} onMouseLeave={() => setCopiedInput(false)} title={copiedInput ? "已复制" : "复制"}>
-                {copiedInput ? <IconCopied /> : <IconCopy />}
-              </button>
+            {(status === "error" || aiStatus === "fail" || aiStatus === "error") && (
+              <div className={`error-bar${aiStatus === "fail" || aiStatus === "error" ? " warn" : ""}`}>
+                <span className="error-bar-text">
+                  {aiStatus === "fail" || aiStatus === "error" ? `⚠ ${aiMessage}` : `⚠ ${error}`}
+                </span>
+                {status === "error" && aiStatus === "idle" && (
+                  <button className="ai-fix-btn" onClick={repairWithAI}>✦ AI 修复</button>
+                )}
+                {aiStatus === "loading" && (
+                  <button className="ai-fix-btn loading" disabled>⟳ 修复中...</button>
+                )}
+                {(aiStatus === "fail" || aiStatus === "error") && (
+                  <>
+                    <button className="ai-fix-btn" onClick={repairWithAI}>↺ 重试</button>
+                    <button className="ai-close-btn" onClick={() => setAiStatus("idle")}>✕</button>
+                  </>
+                )}
+              </div>
             )}
-            <Editor
-              height="100%"
-              defaultLanguage="json"
-              theme={theme === "dark" ? "vs-dark" : "vs"}
-              options={{
-                fontSize: 13.5, lineHeight: 24,
-                minimap: { enabled: false },
-                scrollBeyondLastLine: false,
-                scrollbar: {
-                  verticalScrollbarSize: 6,
-                  horizontalScrollbarSize: 6,
-                  useShadows: false,
-                },
-                renderLineHighlight: "none",
-                fontFamily: "'JetBrains Mono', monospace",
-                fontLigatures: true,
-                padding: { top: 16, bottom: 16 },
-                tabSize: 2,
-              }}
-              onChange={handleChange}
-              onMount={handleEditorMount}
-            />
+            {aiStatus === "success" && <div className="ai-success-bar">✓ AI 已修复</div>}
           </div>
-          {(status === "error" || aiStatus === "fail" || aiStatus === "error") && (
-            <div className={`error-bar${aiStatus === "fail" || aiStatus === "error" ? " warn" : ""}`}>
-              <span className="error-bar-text">
-                {aiStatus === "fail" || aiStatus === "error" ? `⚠ ${aiMessage}` : `⚠ ${error}`}
-              </span>
-              {status === "error" && aiStatus === "idle" && (
-                <button className="ai-fix-btn" onClick={repairWithAI}>✦ AI 修复</button>
-              )}
-              {aiStatus === "loading" && (
-                <button className="ai-fix-btn loading" disabled>⟳ 修复中...</button>
-              )}
-              {(aiStatus === "fail" || aiStatus === "error") && (
-                <>
-                  <button className="ai-fix-btn" onClick={repairWithAI}>↺ 重试</button>
-                  <button className="ai-close-btn" onClick={() => setAiStatus("idle")}>✕</button>
-                </>
-              )}
-            </div>
-          )}
-          {aiStatus === "success" && <div className="ai-success-bar">✓ AI 已修复</div>}
-        </div>
-
-        {/* Divider */}
-        <div className="divider" onMouseDown={handleDividerMouseDown} />
 
         {/* Right: Tree view */}
-        <div className="pane right-pane">
-          <div className="pane-header">
-            <div className="pane-header-left">
-              <span>输出</span>
-            </div>
-            <div className="pane-header-right">
+        <div className="pane right-pane" style={{ width: "100%", display: viewMode === "tree" ? "flex" : "none" }}>
+            <div className="pane-body">
               {parsed !== null && (
                 <>
-                  <button className="pane-copy-btn icon-btn" onClick={() => setExpandAllKey(k => k + 1)} title="全部展开"><IconExpandAll /></button>
-                  <button className="pane-copy-btn icon-btn" onClick={() => setCollapseKey(k => k + 1)} title="全部收起"><IconCollapseAll /></button>
+                  <button className="editor-copy-btn icon-btn" onClick={copyOutput} onMouseLeave={() => setCopiedOutput(false)} title={copiedOutput ? "已复制" : "复制"}>
+                    {copiedOutput ? <IconCopied /> : <IconCopy />}
+                  </button>
+                  <div className="tree-actions">
+                    <button className="editor-copy-btn icon-btn" onClick={() => setExpandAllKey(k => k + 1)} title="全部展开"><IconExpandAll /></button>
+                    <button className="editor-copy-btn icon-btn" onClick={() => setCollapseKey(k => k + 1)} title="全部收起"><IconCollapseAll /></button>
+                  </div>
                 </>
               )}
+              <div className="tree-view">
+                {parsed !== null ? (
+                  <TreeNodeRow keyName={null} value={parsed} depth={0} collapseKey={collapseKey} expandAllKey={expandAllKey} />
+                ) : (
+                  <div className="empty">
+                    <div className="big">{ "{}" }</div>
+                    <div>输入 JSON 查看树形结构</div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-          <div className="pane-body">
-            {parsed !== null && (
-              <button className="editor-copy-btn icon-btn" onClick={copyOutput} onMouseLeave={() => setCopiedOutput(false)} title={copiedOutput ? "已复制" : "复制"}>
-                {copiedOutput ? <IconCopied /> : <IconCopy />}
-              </button>
-            )}
-            <div className="tree-view">
-              {parsed !== null ? (
-                <TreeNodeRow keyName={null} value={parsed} depth={0} collapseKey={collapseKey} expandAllKey={expandAllKey} />
-              ) : (
-                <div className="empty">
-                  <div className="big">{ "{}" }</div>
-                  <div>输入 JSON 查看树形结构</div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Footer */}
