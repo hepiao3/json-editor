@@ -227,8 +227,15 @@ export default function App() {
         readText()
           .then((clipText) => {
             if (clipText && clipText.trim()) {
-              editor.setValue(clipText);
-              setInput(clipText);
+              let textToSet = clipText;
+              try {
+                const parsed = JSON.parse(clipText);
+                textToSet = JSON.stringify(parsed, null, 2);
+              } catch {
+                // 非合法 JSON，保持原文
+              }
+              editor.setValue(textToSet);
+              setInput(textToSet);
             }
           })
           .catch(() => {});
@@ -271,8 +278,15 @@ export default function App() {
       try {
         const clipText = await readText();
         if (clipText && clipText.trim()) {
-          editor.setValue(clipText);
-          setInput(clipText);
+          let textToSet = clipText;
+          try {
+            const parsed = JSON.parse(clipText);
+            textToSet = JSON.stringify(parsed, null, 2);
+          } catch {
+            // 非合法 JSON，保持原文
+          }
+          editor.setValue(textToSet);
+          setInput(textToSet);
         }
       } catch {
         // 剪贴板为空或无权限时，静默忽略
