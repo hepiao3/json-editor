@@ -1,5 +1,9 @@
 # JSON Editor — Tauri + React + Monaco Editor
 
+<div align="center">
+  <img src="src-tauri/icons/128x128.png" width="128">
+</div>
+
 一个轻量、美观的 JSON 格式化桌面编辑器。
 
 ## 技术栈
