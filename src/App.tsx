@@ -174,6 +174,7 @@ export default function App() {
   const [viewMode, setViewMode] = useState<"editor" | "tree">("editor");
   const activeApiKey = apiKeys[aiProvider] ?? "";
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
+  const autoFormatTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef(input);
   useEffect(() => { inputRef.current = input; }, [input]);
   const titleBarRef = useRef<HTMLDivElement>(null);
@@ -243,10 +244,19 @@ export default function App() {
     const v = val ?? "";
     setInput(v);
     setAiStatus("idle");
+
+    if (autoFormatTimerRef.current) {
+      clearTimeout(autoFormatTimerRef.current);
+    }
+
     if (!v.trim()) { setStatus("idle"); setError(""); setParsed(null); return; }
     try {
       const data = JSON.parse(v);
       setStatus("ok"); setError(""); setParsed(data);
+
+      autoFormatTimerRef.current = setTimeout(() => {
+        editorRef.current?.getAction("editor.action.formatDocument")?.run();
+      }, 500);
     } catch (e: unknown) {
       setStatus("error");
       setError((e as Error).message);
