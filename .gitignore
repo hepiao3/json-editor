@@ -29,6 +29,7 @@ dist-ssr/
 
 # TypeScript
 *.tsbuildinfo
+src/**/*.js
 
 # Tauri
 src-tauri/target/
