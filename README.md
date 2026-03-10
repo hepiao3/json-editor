@@ -1,6 +1,6 @@
 # JSON Editor — Tauri + React + Monaco Editor
 
-一个轻量、美观的 JSON 格式化桌面编辑器。
+一个轻量、美观的 JSON 格式化桌面编辑器，支持 macOS 与 Windows。
 
 <div align="center">
   <img src="image/index.png" width="600">
@@ -26,23 +26,36 @@
 - ✅ 窗口聚焦时自动读取剪贴板 JSON 并格式化填入
 - ✅ 文件大小 / 行数 / 字符统计（底部状态栏）
 - ✅ 亮色 / 暗色主题切换
-- ✅ macOS 原生标题栏样式
+- ✅ 支持 macOS / Windows 
 - ✅ AI 辅助修复（支持 Claude / DeepSeek，自动修复常见 JSON 错误或给出中文原因）
 
 ## 本地开发
 
 ### 前提条件
 
+**macOS**
+
 ```bash
-# 1. 安装 Rust（一条命令搞定）
+# 1. 安装 Rust
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-# 2. 安装 Tauri CLI 依赖的系统库（macOS 通常已满足）
+# 2. 安装系统依赖
 xcode-select --install
 
-# 3. 安装 Node.js（推荐 v18+，用 nvm 管理）
-brew install nvm
-nvm install 20
+# 3. 安装 Node.js（推荐 v18+）
+brew install nvm && nvm install 20
+```
+
+**Windows**
+
+```powershell
+# 1. 安装 Rust（从官网下载 rustup-init.exe）
+# https://rustup.rs
+
+# 2. 安装 Visual Studio C++ 生成工具（Rust 编译所需）
+# 在 Visual Studio Installer 中勾选「使用 C++ 的桌面开发」
+
+# 3. 安装 Node.js（推荐 v18+，从 nodejs.org 下载）
 ```
 
 ### 启动
@@ -61,7 +74,9 @@ npm run tauri dev
 ### 打包发布
 
 ```bash
-# 构建 .app 应用包（输出在 src-tauri/target/release/bundle/）
+# 构建应用包（输出在 src-tauri/target/release/bundle/）
+# macOS：生成 .app / .dmg
+# Windows：生成 .exe / .msi
 npm run tauri build
 ```
 
