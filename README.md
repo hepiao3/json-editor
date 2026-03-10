@@ -1,99 +1,101 @@
 # JSON Editor — Tauri + React + Monaco Editor
 
-一个轻量、美观的 JSON 格式化桌面编辑器，支持 macOS 与 Windows。
+English | [中文](./README.zh.md)
+
+A lightweight and beautiful JSON formatting desktop editor, supporting macOS and Windows.
 
 <div align="center">
   <img src="image/index.png" width="600">
 </div>
 
-## 技术栈
+## Tech Stack
 
-| 层 | 技术 |
+| Layer | Technology |
 |---|---|
-| 桌面框架 | Tauri 2.0 |
-| 后端逻辑 | Rust (serde_json) |
-| UI 框架 | React 18 + TypeScript |
-| 编辑器组件 | Monaco Editor (VS Code 同款) |
-| 样式 | 纯 CSS（无框架） |
-| 构建工具 | Vite 5 |
+| Desktop Framework | Tauri 2.0 |
+| Backend Logic | Rust (serde_json) |
+| UI Framework | React 18 + TypeScript |
+| Editor Component | Monaco Editor (same as VS Code) |
+| Styling | Plain CSS (no framework) |
+| Build Tool | Vite 5 |
 
-## 功能
+## Features
 
-- ✅ 实时 JSON 语法验证（Monaco 编辑器错误高亮）
-- ✅ 树形结构预览（支持全部展开 / 全部收起）
-- ✅ 编辑视图 / 树形视图一键切换
-- ✅ 复制到剪贴板（编辑视图与树形视图均支持）
-- ✅ 窗口聚焦时自动读取剪贴板 JSON 并格式化填入
-- ✅ 文件大小 / 行数 / 字符统计（底部状态栏）
-- ✅ 亮色 / 暗色主题切换
-- ✅ 支持 macOS / Windows 
-- ✅ AI 辅助修复（支持 Claude / DeepSeek，自动修复常见 JSON 错误或给出中文原因）
+- ✅ Real-time JSON syntax validation (Monaco editor error highlighting)
+- ✅ Tree structure preview (support expand all / collapse all)
+- ✅ One-click switch between editor view and tree view
+- ✅ Copy to clipboard (supported in both editor and tree views)
+- ✅ Auto-read clipboard JSON and format on window focus
+- ✅ File size / line count / character count (bottom status bar)
+- ✅ Light / Dark theme toggle
+- ✅ macOS / Windows support
+- ✅ AI-assisted repair (supports Claude / DeepSeek, auto-fixes common JSON errors or provides explanations)
 
-## 本地开发
+## Local Development
 
-### 前提条件
+### Prerequisites
 
 **macOS**
 
 ```bash
-# 1. 安装 Rust
+# 1. Install Rust
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-# 2. 安装系统依赖
+# 2. Install system dependencies
 xcode-select --install
 
-# 3. 安装 Node.js（推荐 v18+）
+# 3. Install Node.js (v18+ recommended)
 brew install nvm && nvm install 20
 ```
 
 **Windows**
 
 ```powershell
-# 1. 安装 Rust（从官网下载 rustup-init.exe）
+# 1. Install Rust (download rustup-init.exe from the official site)
 # https://rustup.rs
 
-# 2. 安装 Visual Studio C++ 生成工具（Rust 编译所需）
-# 在 Visual Studio Installer 中勾选「使用 C++ 的桌面开发」
+# 2. Install Visual Studio C++ Build Tools (required for Rust compilation)
+# Check "Desktop development with C++" in Visual Studio Installer
 
-# 3. 安装 Node.js（推荐 v18+，从 nodejs.org 下载）
+# 3. Install Node.js (v18+ recommended, download from nodejs.org)
 ```
 
-### 启动
+### Getting Started
 
 ```bash
-# 进入项目目录
+# Navigate to the project directory
 cd json-editor-tauri
 
-# 安装 npm 依赖
+# Install npm dependencies
 npm install
 
-# 启动开发模式（自动打开桌面窗口 + 热更新）
+# Start development mode (auto-opens desktop window + hot reload)
 npm run tauri dev
 ```
 
-### 打包发布
+### Build for Production
 
 ```bash
-# 构建应用包（输出在 src-tauri/target/release/bundle/）
-# macOS：生成 .app / .dmg
-# Windows：生成 .exe / .msi
+# Build the application bundle (output in src-tauri/target/release/bundle/)
+# macOS: generates .app / .dmg
+# Windows: generates .exe / .msi
 npm run tauri build
 ```
 
-## 项目结构
+## Project Structure
 
 ```
 json-editor-tauri/
-├── src/                    # React 前端
-│   ├── App.tsx             # 主组件
-│   ├── App.css             # 样式
-│   └── main.tsx            # 入口
-├── src-tauri/              # Rust 后端
+├── src/                    # React frontend
+│   ├── App.tsx             # Main component
+│   ├── App.css             # Styles
+│   └── main.tsx            # Entry point
+├── src-tauri/              # Rust backend
 │   ├── src/
-│   │   ├── main.rs         # 程序入口
-│   │   └── lib.rs          # Tauri 命令（format/minify/validate）
-│   ├── Cargo.toml          # Rust 依赖
-│   └── tauri.conf.json     # Tauri 配置（窗口、Bundle等）
+│   │   ├── main.rs         # Program entry
+│   │   └── lib.rs          # Tauri commands (format/minify/validate)
+│   ├── Cargo.toml          # Rust dependencies
+│   └── tauri.conf.json     # Tauri config (window, bundle, etc.)
 ├── index.html
 ├── vite.config.ts
 └── package.json
