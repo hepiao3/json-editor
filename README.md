@@ -1,4 +1,4 @@
-# JSON Editor — Tauri + React + Monaco Editor
+# JSON Editor
 
 English | [中文](./README.zh.md)
 
