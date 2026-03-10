@@ -1,3 +1,4 @@
+#[cfg(debug_assertions)]
 use tauri::Manager;
 
 // 自定义 Tauri 命令：在 Rust 侧做 JSON 格式化（可选，前端也能做）
@@ -33,11 +34,10 @@ pub fn run() {
             minify_json,
             validate_json,
         ])
-        .setup(|app| {
-            let window = app.get_webview_window("main").unwrap();
+        .setup(|_app| {
             // 开发模式下打开 DevTools
             #[cfg(debug_assertions)]
-            window.open_devtools();
+            _app.get_webview_window("main").unwrap().open_devtools();
             Ok(())
         })
         .run(tauri::generate_context!())
